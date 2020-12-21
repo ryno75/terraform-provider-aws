@@ -8,9 +8,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/organizations"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/terraform-providers/terraform-provider-aws/aws/internal/keyvaluetags"
 )
 
@@ -58,10 +58,13 @@ func resourceAwsOrganizationsGovCloudAccount() *schema.Resource {
 				ValidateFunc: validation.StringLenBetween(1, 50),
 			},
 			"email": {
-				ForceNew:     true,
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validateAwsOrganizationsAccountEmail,
+				ForceNew: true,
+				Type:     schema.TypeString,
+				Required: true,
+				ValidateFunc: validation.All(
+					validation.StringLenBetween(6, 64),
+					validation.StringMatch(regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`), "must be a valid email address"),
+				),
 			},
 			"iam_user_access_to_billing": {
 				ForceNew:     true,
@@ -73,7 +76,7 @@ func resourceAwsOrganizationsGovCloudAccount() *schema.Resource {
 				ForceNew:     true,
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: validateAwsOrganizationsAccountRoleName,
+				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[\w+=,.@-]{1,64}$`), "must consist of uppercase letters, lowercase letters, digits with no spaces, and any of the following characters"),
 			},
 			"tags": tagsSchema(),
 		},
