@@ -47,6 +47,10 @@ func resourceAwsOrganizationsGovCloudAccount() *schema.Resource {
 				Optional:     true,
 				ValidateFunc: validation.StringMatch(regexp.MustCompile("^(r-[0-9a-z]{4,32})|(ou-[0-9a-z]{4,32}-[a-z0-9]{8,32})$"), "see https://docs.aws.amazon.com/organizations/latest/APIReference/API_MoveAccount.html#organizations-MoveAccount-request-DestinationParentId"),
 			},
+			"create_account_request_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"status": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -127,6 +131,8 @@ func resourceAwsOrganizationsGovCloudAccountCreate(d *schema.ResourceData, meta 
 	}
 
 	requestId := *resp.CreateAccountStatus.Id
+	// Store the Create Account Request (CAR) ID
+	d.Set("create_account_request_id", *requestId)
 
 	// Wait for the account to become available
 	log.Printf("[DEBUG] Waiting for account request (%s) to succeed", requestId)

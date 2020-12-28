@@ -34,19 +34,19 @@ func testAccAwsOrganizationsGovCloudAccount_basic(t *testing.T) {
 			{
 				Config: testAccAwsOrganizationsGovCloudAccountConfig(name, email),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAwsOrganizationsGovCloudAccountExists("aws_organizations_account.test", &account),
-					resource.TestCheckResourceAttrSet("aws_organizations_account.test", "arn"),
-					resource.TestCheckResourceAttrSet("aws_organizations_account.test", "joined_method"),
-					testAccCheckResourceAttrRfc3339("aws_organizations_account.test", "joined_timestamp"),
-					resource.TestCheckResourceAttrSet("aws_organizations_account.test", "parent_id"),
-					resource.TestCheckResourceAttr("aws_organizations_account.test", "name", name),
-					resource.TestCheckResourceAttr("aws_organizations_account.test", "email", email),
-					resource.TestCheckResourceAttrSet("aws_organizations_account.test", "status"),
-					resource.TestCheckResourceAttr("aws_organizations_account.test", "tags.%", "0"),
+					testAccCheckAwsOrganizationsGovCloudAccountExists("aws_organizations_govcloud_account.test", &account),
+					resource.TestCheckResourceAttrSet("aws_organizations_govcloud_account.test", "arn"),
+					resource.TestCheckResourceAttrSet("aws_organizations_govcloud_account.test", "joined_method"),
+					testAccCheckResourceAttrRfc3339("aws_organizations_govcloud_account.test", "joined_timestamp"),
+					resource.TestCheckResourceAttrSet("aws_organizations_govcloud_account.test", "parent_id"),
+					resource.TestCheckResourceAttr("aws_organizations_govcloud_account.test", "name", name),
+					resource.TestCheckResourceAttr("aws_organizations_govcloud_account.test", "email", email),
+					resource.TestCheckResourceAttrSet("aws_organizations_govcloud_account.test", "status"),
+					resource.TestCheckResourceAttr("aws_organizations_govcloud_account.test", "tags.%", "0"),
 				),
 			},
 			{
-				ResourceName:      "aws_organizations_account.test",
+				ResourceName:      "aws_organizations_govcloud_account.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -68,7 +68,7 @@ func testAccAwsOrganizationsGovCloudAccount_ParentId(t *testing.T) {
 	rInt := acctest.RandInt()
 	name := fmt.Sprintf("tf_acctest_%d", rInt)
 	email := fmt.Sprintf("tf-acctest+%d@%s", rInt, orgsEmailDomain)
-	resourceName := "aws_organizations_account.test"
+	resourceName := "aws_organizations_govcloud_account.test"
 	parentIdResourceName1 := "aws_organizations_organizational_unit.test1"
 	parentIdResourceName2 := "aws_organizations_organizational_unit.test2"
 
@@ -114,7 +114,7 @@ func testAccAwsOrganizationsGovCloudAccount_Tags(t *testing.T) {
 	rInt := acctest.RandInt()
 	name := fmt.Sprintf("tf_acctest_%d", rInt)
 	email := fmt.Sprintf("tf-acctest+%d@%s", rInt, orgsEmailDomain)
-	resourceName := "aws_organizations_account.test"
+	resourceName := "aws_organizations_govcloud_account.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -146,8 +146,8 @@ func testAccAwsOrganizationsGovCloudAccount_Tags(t *testing.T) {
 			{
 				Config: testAccAwsOrganizationsGovCloudAccountConfig(name, email),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAwsOrganizationsGovCloudAccountExists("aws_organizations_account.test", &account),
-					resource.TestCheckResourceAttr("aws_organizations_account.test", "tags.%", "0"),
+					testAccCheckAwsOrganizationsGovCloudAccountExists("aws_organizations_govcloud_account.test", &account),
+					resource.TestCheckResourceAttr("aws_organizations_govcloud_account.test", "tags.%", "0"),
 				),
 			},
 		},
@@ -158,7 +158,7 @@ func testAccCheckAwsOrganizationsGovCloudAccountDestroy(s *terraform.State) erro
 	conn := testAccProvider.Meta().(*AWSClient).organizationsconn
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "aws_organizations_account" {
+		if rs.Type != "aws_organizations_govcloud_account" {
 			continue
 		}
 
@@ -215,7 +215,7 @@ func testAccCheckAwsOrganizationsGovCloudAccountExists(n string, a *organization
 
 func testAccAwsOrganizationsGovCloudAccountConfig(name, email string) string {
 	return fmt.Sprintf(`
-resource "aws_organizations_account" "test" {
+resource "aws_organizations_govcloud_account" "test" {
   name  = "%s"
   email = "%s"
 }
@@ -236,7 +236,7 @@ resource "aws_organizations_organizational_unit" "test2" {
   parent_id = "${aws_organizations_organization.test.roots.0.id}"
 }
 
-resource "aws_organizations_account" "test" {
+resource "aws_organizations_govcloud_account" "test" {
   name      = %[1]q
   email     = %[2]q
   parent_id = "${aws_organizations_organizational_unit.test1.id}"
@@ -258,7 +258,7 @@ resource "aws_organizations_organizational_unit" "test2" {
   parent_id = "${aws_organizations_organization.test.roots.0.id}"
 }
 
-resource "aws_organizations_account" "test" {
+resource "aws_organizations_govcloud_account" "test" {
   name      = %[1]q
   email     = %[2]q
   parent_id = "${aws_organizations_organizational_unit.test2.id}"
@@ -270,7 +270,7 @@ func testAccAwsOrganizationsGovCloudAccountConfigTags1(name, email, tagKey1, tag
 	return fmt.Sprintf(`
 resource "aws_organizations_organization" "test" {}
 
-resource "aws_organizations_account" "test" {
+resource "aws_organizations_govcloud_account" "test" {
   name  = %[1]q
   email = %[2]q
 
@@ -285,7 +285,7 @@ func testAccAwsOrganizationsGovCloudAccountConfigTags2(name, email, tagKey1, tag
 	return fmt.Sprintf(`
 resource "aws_organizations_organization" "test" {}
 
-resource "aws_organizations_account" "test" {
+resource "aws_organizations_govcloud_account" "test" {
   name  = %[1]q
   email = %[2]q
 
