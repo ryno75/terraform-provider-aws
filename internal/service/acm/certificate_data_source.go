@@ -66,6 +66,21 @@ func dataSourceCertificate() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
+			"export_private_key": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"passphrase": {
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+			},
+			names.AttrPrivateKey: {
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
+			},
 			names.AttrStatus: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -217,6 +232,31 @@ func dataSourceCertificateRead(ctx context.Context, d *schema.ResourceData, meta
 	} else {
 		d.Set(names.AttrCertificate, nil)
 		d.Set(names.AttrCertificateChain, nil)
+	}
+
+	// Export the private key if requested
+	if d.Get("export_private_key").(bool) {
+		arn := aws.ToString(matchedCertificate.CertificateArn)
+
+		passphrase, passphraseOk := d.GetOk("passphrase")
+		if !passphraseOk || passphrase.(string) == "" {
+			return sdkdiag.AppendErrorf(diags, "passphrase is required when export_private_key is true")
+		}
+
+		exportInput := acm.ExportCertificateInput{
+			CertificateArn: aws.String(arn),
+			Passphrase:     []byte(passphrase.(string)),
+		}
+
+		exportOutput, err := conn.ExportCertificate(ctx, &exportInput)
+
+		if err != nil {
+			return sdkdiag.AppendErrorf(diags, "exporting ACM Certificate (%s): %s", arn, err)
+		}
+
+		d.Set(names.AttrPrivateKey, aws.ToString(exportOutput.PrivateKey))
+	} else {
+		d.Set(names.AttrPrivateKey, nil)
 	}
 
 	d.SetId(aws.ToString(matchedCertificate.CertificateArn))

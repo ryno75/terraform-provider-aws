@@ -529,3 +529,141 @@ data "aws_acm_certificate" "test" {
 }
 `, rName, certificate, key)
 }
+
+func TestAccACMCertificateDataSource_exportPrivateKey(t *testing.T) {
+	ctx := acctest.Context(t)
+	dataSourceName := "data.aws_acm_certificate.test"
+	resourceName := "aws_acm_certificate.test"
+	commonName := acctest.RandomDomain()
+	certificateDomainName := commonName.RandomSubdomain().String()
+
+	acctest.ParallelTest(ctx, t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(ctx, t) },
+		ErrorCheck:               acctest.ErrorCheck(t, names.ACMServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCertificateDataSourceConfig_exportPrivateKey(commonName.String(), certificateDomainName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair(dataSourceName, names.AttrARN, resourceName, names.AttrARN),
+					resource.TestCheckResourceAttr(dataSourceName, names.AttrDomain, certificateDomainName),
+					resource.TestCheckResourceAttr(dataSourceName, "export_private_key", acctest.CtTrue),
+					resource.TestCheckResourceAttrSet(dataSourceName, names.AttrPrivateKey),
+				),
+			},
+		},
+	})
+}
+
+func TestAccACMCertificateDataSource_exportPrivateKeyWithoutPassphrase(t *testing.T) {
+	ctx := acctest.Context(t)
+	commonName := acctest.RandomDomain()
+	certificateDomainName := commonName.RandomSubdomain().String()
+
+	acctest.ParallelTest(ctx, t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(ctx, t) },
+		ErrorCheck:               acctest.ErrorCheck(t, names.ACMServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccCertificateDataSourceConfig_exportPrivateKeyWithoutPassphrase(commonName.String(), certificateDomainName),
+				ExpectError: regexache.MustCompile(`passphrase is required when export_private_key is true`),
+			},
+		},
+	})
+}
+
+func testAccCertificateDataSourceConfig_exportPrivateKey(commonName, certificateDomainName string) string {
+	return acctest.ConfigCompose(testAccCertificateDataSourceConfig_privateCertificateBase(commonName), fmt.Sprintf(`
+resource "aws_acm_certificate" "test" {
+  domain_name               = %[1]q
+  certificate_authority_arn = aws_acmpca_certificate_authority.test.arn
+
+  depends_on = [
+    aws_acmpca_certificate_authority_certificate.test,
+    aws_acmpca_permission.test,
+  ]
+}
+
+resource "aws_acmpca_permission" "test" {
+  certificate_authority_arn = aws_acmpca_certificate_authority.test.arn
+  principal                 = "acm.amazonaws.com"
+  actions                   = ["IssueCertificate", "GetCertificate", "ListPermissions"]
+}
+
+data "aws_acm_certificate" "test" {
+  domain             = %[1]q
+  export_private_key = true
+  passphrase         = "test-passphrase-12345"
+
+  depends_on = [aws_acm_certificate.test]
+}
+`, certificateDomainName))
+}
+
+func testAccCertificateDataSourceConfig_exportPrivateKeyWithoutPassphrase(commonName, certificateDomainName string) string {
+	return acctest.ConfigCompose(testAccCertificateDataSourceConfig_privateCertificateBase(commonName), fmt.Sprintf(`
+resource "aws_acm_certificate" "test" {
+  domain_name               = %[1]q
+  certificate_authority_arn = aws_acmpca_certificate_authority.test.arn
+
+  depends_on = [
+    aws_acmpca_certificate_authority_certificate.test,
+    aws_acmpca_permission.test,
+  ]
+}
+
+resource "aws_acmpca_permission" "test" {
+  certificate_authority_arn = aws_acmpca_certificate_authority.test.arn
+  principal                 = "acm.amazonaws.com"
+  actions                   = ["IssueCertificate", "GetCertificate", "ListPermissions"]
+}
+
+data "aws_acm_certificate" "test" {
+  domain             = %[1]q
+  export_private_key = true
+
+  depends_on = [aws_acm_certificate.test]
+}
+`, certificateDomainName))
+}
+
+func testAccCertificateDataSourceConfig_privateCertificateBase(commonName string) string {
+	return fmt.Sprintf(`
+resource "aws_acmpca_certificate_authority" "test" {
+  permanent_deletion_time_in_days = 7
+  type                            = "ROOT"
+
+  certificate_authority_configuration {
+    key_algorithm     = "RSA_4096"
+    signing_algorithm = "SHA512WITHRSA"
+
+    subject {
+      common_name = %[1]q
+    }
+  }
+}
+
+resource "aws_acmpca_certificate" "test" {
+  certificate_authority_arn   = aws_acmpca_certificate_authority.test.arn
+  certificate_signing_request = aws_acmpca_certificate_authority.test.certificate_signing_request
+  signing_algorithm           = "SHA512WITHRSA"
+
+  template_arn = "arn:${data.aws_partition.current.partition}:acm-pca:::template/RootCACertificate/V1"
+
+  validity {
+    type  = "YEARS"
+    value = 2
+  }
+}
+
+resource "aws_acmpca_certificate_authority_certificate" "test" {
+  certificate_authority_arn = aws_acmpca_certificate_authority.test.arn
+
+  certificate       = aws_acmpca_certificate.test.certificate
+  certificate_chain = aws_acmpca_certificate.test.certificate_chain
+}
+
+data "aws_partition" "current" {}
+`, commonName)
+}

@@ -32,6 +32,13 @@ data "aws_acm_certificate" "rsa_4096" {
   domain    = "tf.example.com"
   key_types = ["RSA_4096"]
 }
+
+# Export the private key from an exportable certificate
+data "aws_acm_certificate" "exported" {
+  domain             = "tf.example.com"
+  export_private_key = true
+  passphrase         = "my-secure-passphrase"
+}
 ```
 
 ## Argument Reference
@@ -47,6 +54,8 @@ This data source supports the following arguments:
 * `types` - (Optional) List of types on which to filter the returned list. Valid values are `AMAZON_ISSUED`, `PRIVATE`, and `IMPORTED`.
 * `most_recent` - (Optional) If set to true, it sorts the certificates matched by previous criteria by the NotBefore field, returning only the most recent one. If set to false, it returns an error if more than one certificate is found. Defaults to false.
 * `tags` - (Optional) A mapping of tags, each pair of which must exactly match a pair on the desired certificates.
+* `export_private_key` - (Optional) Whether to export the private key from the certificate. Defaults to `false`. When set to `true`, the `passphrase` argument is required. Only certificates marked as exportable can have their private keys exported. Note: Private CA certificates can be exported without marking them as exportable.
+* `passphrase` - (Optional) Passphrase to use for encrypting the exported private key. Required when `export_private_key` is `true`. The passphrase must be at least 4 characters long.
 
 ## Attribute Reference
 
@@ -57,4 +66,5 @@ This data source exports the following attributes in addition to the arguments a
 * `status` - Status of the found certificate.
 * `certificate` - ACM-issued certificate.
 * `certificate_chain` - Certificates forming the requested ACM-issued certificate's chain of trust. The chain consists of the certificate of the issuing CA and the intermediate certificates of any other subordinate CAs.
+* `private_key` - Private key of the certificate, encrypted with the provided passphrase. This attribute is only populated when `export_private_key` is set to `true`. The private key is PEM-encoded.
 * `tags` - Mapping of tags for the resource.
